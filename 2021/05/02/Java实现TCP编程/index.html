@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-CN">
+  
+
+    <head>
+      <meta charset="utf-8" />
+        
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1"
+      />
+      <title>Java实现TCP编程 |  BLUSH</title>
+  <meta name="generator" content="hexo-theme-ayer">
+      
+      <link rel="shortcut icon" href="/favicon.ico" />
+       
+<link rel="stylesheet" href="/dist/main.css">
+
+      <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css"
+      />
+      
+<link rel="stylesheet" href="/css/custom.css">
+ 
+      <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+       
+ 
+
+      <!-- mermaid -->
+      
+    </head>
+  </html>
+</html>
+<script type="text/javascript">
+// 浏览器搞笑标题
+var OriginTitle = document.title;
+var titleTime;
+document.addEventListener('visibilitychange', function () {
+    if (location.href != "https://www.xxxzhy.com/"){//主页不变
+        if (document.hidden) {
+            //$('[rel="icon"]').attr('href', "/funny.ico");
+            document.title = '/(ㄒoㄒ)/你弄丢了XXXZhy';
+            clearTimeout(titleTime);
+        }else {
+            //$('[rel="icon"]').attr('href', "/favicon.ico");
+            document.title = '(ฅ>ω<*ฅ) 噫又好啦~' + OriginTitle;
+            titleTime = setTimeout(function () {
+                document.title = OriginTitle;
+            }, 2000);
+        }
+    }
+});
+</script>
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article
+  id="post-Java实现TCP编程"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  Java实现TCP编程
+</h1>
+ 
+
+      
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2021/05/02/Java%E5%AE%9E%E7%8E%B0TCP%E7%BC%96%E7%A8%8B/" class="article-date">
+  <time datetime="2021-05-01T18:12:17.000Z" itemprop="datePublished">2021-05-02</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Java/">Java</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> 字数统计:</span>
+            <span class="post-count">3.8k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> 阅读时长≈</span>
+            <span class="post-count">16 分钟</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <p>TCP（Transmission Control Protocol），<strong>即传输控制协议。是一种面向连接的、可靠的、基于字节流的传输层通信协议</strong>。不同于UDP，TCP更像是提供一种可靠的、像管道一样的连接。</p>
+<span id="more"></span>
+
+<p>Java中的TCP主要涉及ServerSocket和Socket两个类。前者被认为是服务端的一个实体，用于接受连接。后者则被认为是连接的一种封装，用于传输数据，类似于一个管道。</p>
+<p><img src="/2021/05/02/Java%E5%AE%9E%E7%8E%B0TCP%E7%BC%96%E7%A8%8B/head.jpeg" alt="head"></p>
+<p>假设我现在要写一个程序，给另一台计算机发数据，必须通过tcp/ip协议 ，但具体的实现过程是什么呢？我应该怎么操作才能把数据封装成tcp/ip的包，又执行什么指令才能把数据发到对端机器上呢? 不能只有世界观，没有方法论呀。。。此时，socket隆重登场，简而言之，socket这个东东干的事情，就是帮你把tcp/ip协议层的各种数据封装啦、数据发送、接收等通过代码已经给你封装好了，你只需要调用几行代码，就可以给别的机器发消息了。</p>
+<h2 id="Socket基础知识概括"><a href="#Socket基础知识概括" class="headerlink" title="Socket基础知识概括"></a>Socket基础知识概括</h2><h3 id="什么是socket"><a href="#什么是socket" class="headerlink" title="什么是socket?"></a><strong>什么是socket?</strong></h3><p>socket是<strong>应用层与TCP/IP协议族通信的中间软件抽象层</strong>，它是一组接口。在设计模式中，Socket其实就是一个门面模式，它把复杂的TCP/IP协议族隐藏在Socket接口后面，对用户来说，一组简单的接口就是全部。<br><img src="/2021/05/02/Java%E5%AE%9E%E7%8E%B0TCP%E7%BC%96%E7%A8%8B/01.jpeg" alt="01"></p>
+<p>socket起源于Unix，而Unix/Linux 基本哲学之一就是“一切皆文件”，都可以用“打开open –&gt; 读写write/read –&gt; 关闭close”模式 来操作。Socket就是该模式的一个实现，socket即是一种特殊的文件，一些socket函数就是对其进行的操作（读/写IO、打开、关闭）</p>
+<p>你想给另一台计算机发消息，你知道他的IP地址，他的机器上同时运行着qq、迅雷、word、浏览器等程序，你想给他的qq发消息，那想一下，你现在只能通过ip找到他的机器，但如果让这台机器知道把消息发给qq程序呢？答案就是通过port,一个机器上可以有0-65535个端口，你的程序想从网络上收发数据，就必须绑定一个端口，这样，远程发到这个端口上的数据，就全会转给这个程序啦</p>
+<p><img src="/2021/05/02/Java%E5%AE%9E%E7%8E%B0TCP%E7%BC%96%E7%A8%8B/02.jpeg" alt="02"></p>
+<h3 id="Socket通信套路-人脑思维"><a href="#Socket通信套路-人脑思维" class="headerlink" title="Socket通信套路(人脑思维)"></a><strong>Socket通信套路(人脑思维)</strong></h3><p>当通过socket建立起2台机器的连接后，本质上socket只干2件事，一是收数据，一是发数据，没数据时就等着。</p>
+<p>socket 建立连接的过程跟我们现实中打电话比较像，打电话必须是打电话方和接电话方共同完成的事情，我们分别看看他们是怎么建立起通话的</p>
+<p>接电话方：</p>
+<ol>
+<li><code>首先你得有个电话</code></li>
+<li><code>你的电话要有号码</code></li>
+<li><code>你的电话必须连上电话线</code></li>
+<li><code>开始在家等电话</code></li>
+<li><code>电话铃响了，接起电话，听到对方的声音</code></li>
+</ol>
+<p>打电话方：</p>
+<ol>
+<li><code>首先你得有个电话</code></li>
+<li><code>输入你想拨打的电话</code></li>
+<li><code>等待对方接听</code></li>
+<li><code>say“hi 约么，我有七天酒店的打折卡噢~”</code></li>
+<li><code>等待回应——》响应回应——》等待回应。。。。</code></li>
+</ol>
+<p>把它翻译成scoket通信</p>
+<p>接电话方(socket服务器端)：</p>
+<ol>
+<li><code>首先你得有个电话(生成ServerSocket 对象)</code></li>
+<li><code>你的电话要有号码(绑定本机ip+port)</code></li>
+<li><code>你的电话必须连上电话线(连网)</code></li>
+<li><code>开始在家等电话(accept())</code></li>
+<li><code>电话铃响了，接起电话，听到对方的声音(接受新连接)</code></li>
+</ol>
+<p>打电话方(socket客户端)：</p>
+<ol>
+<li><code>首先你得有个电话(生成socket对象)</code></li>
+<li><code>输入你想拨打的电话(connect 远程主机ip+port)</code></li>
+<li><code>等待对方接听</code></li>
+<li><code>say“hi 约么，我有七天酒店的打折卡噢~”(发消息。。。)</code></li>
+<li><code>等待回应——》响应回应——》等待回应。。。。</code></li>
+</ol>
+<p><img src="/2021/05/02/Java%E5%AE%9E%E7%8E%B0TCP%E7%BC%96%E7%A8%8B/03.jpeg" alt="03"></p>
+<h3 id="ServerSocket-服务器"><a href="#ServerSocket-服务器" class="headerlink" title="ServerSocket(服务器)"></a>ServerSocket(服务器)</h3><p>ServerSocket 类是与 Socket 类相对应的用于表示通信双方中的服务器端，用于在服务器上开一个端口，被动地等待数据（使用 accept() 方法）并建立连接进行数据交互。</p>
+<h4 id="ServerSocket-的构造方法"><a href="#ServerSocket-的构造方法" class="headerlink" title="ServerSocket 的构造方法"></a>ServerSocket 的构造方法</h4><p>ServerSocket 的构造方法如下所示。</p>
+<ul>
+<li><code>ServerSocket()</code>：无参构造方法。</li>
+<li><code>ServerSocket(int port)</code>：创建绑定到特定端口的服务器套接字。</li>
+<li><code>ServerSocket(int port,int backlog)</code>：使用指定的 backlog 创建服务器套接字并将其绑定到指定的本地端口。</li>
+<li><code>ServerSocket(int port,int backlog,InetAddress bindAddr)</code>：使用指定的端口、监听 backlog 和要绑定到本地的 IP 地址创建服务器。</li>
+</ul>
+<p>在上述方法的参数中 port 指的是本地 TCP 端口，backlog 指的是监听 backlog，bindAddr 指的是要将服务器绑定到的 InetAddress。</p>
+<h4 id="ServerSocket-的常用方法"><a href="#ServerSocket-的常用方法" class="headerlink" title="ServerSocket 的常用方法"></a>ServerSocket 的常用方法</h4><p>ServerSocket 的常用方法如下所示。</p>
+<ul>
+<li><code>Server accept()</code>：监听并接收到此套接字的连接。</li>
+<li><code>void bind(SocketAddress endpoint)</code>：将 ServerSocket 绑定到指定地址（IP 地址和端口号）。</li>
+<li><code>void close()</code>：关闭此套接字。</li>
+<li><code>InetAddress getInetAddress()</code>：返回此服务器套接字的本地地址。</li>
+<li><code>int getLocalPort()</code>：返回此套接字监听的端口。</li>
+<li><code>SocketAddress getLocalSoclcetAddress()</code>：返回此套接字绑定的端口的地址，如果尚未绑定则返回 null。</li>
+<li><code>int getReceiveBufferSize()</code>：获取此 ServerSocket 的 SO_RCVBUF 选项的值，该值是从 ServerSocket 接收的套接字的建议缓冲区大小。</li>
+</ul>
+<p>调用 accept() 方法会返回一个和客户端 Socket 对象相连接的 Socket 对象，服务器端的 Socket 对象使用 getOutputStream() 方法获得的输出流将指定客户端 Socket 对象使用 getInputStream() 方法获得那个输入流。同样，服务器端的 Socket 对象使用的 getInputStream() 方法获得的输入流将指向客户端 Socket 对象使用的 getOutputStream() 方法获得的那个输出流。也就是说，当服务器向输出流写入信息时，客户端通过相应的输入流就能读取，反之同样如此。</p>
+<h3 id="Socket-客户端"><a href="#Socket-客户端" class="headerlink" title="Socket (客户端)"></a>Socket (客户端)</h3><p>Socket 类表示通信双方中的客户端，用于呼叫远端机器上的一个端口，主动向服务器端发送数据（当连接建立后也能接收数据）。</p>
+<h4 id="Socket-的构造方法"><a href="#Socket-的构造方法" class="headerlink" title="Socket 的构造方法"></a>Socket 的构造方法</h4><p>Socket的构造方法如下所示。</p>
+<ul>
+<li><code>Socket()</code>：无参构造方法。</li>
+<li><code>Socket(InetAddress address,int port)</code>：创建一个流套接字并将其连接到指定 IP 地址的指定端口。</li>
+<li><code>Soclcet(InetAddress address,int port,InetAddress localAddr,int localPort)</code>：创建一个套接字并将其连接到指定远程地址上的指定远程端口。</li>
+<li><code>Socket(String host,int port)</code>：创建一个流套接字并将其连接到指定主机上的指定端口。</li>
+<li><code>Socket(String host,int port,InetAddress localAddr,int localPort)</code>：创建一个套接字并将其连接到指定远程地址上的指定远程端口。Socket 会通过调用 bind() 函数来绑定提供的本地地址及端口。</li>
+</ul>
+<p>在上述方法的参数中，address 指的是远程地址，port 指的是远程端口，localAddr 指的是要将套接字绑定到的本地地址，localPort 指的是要将套接字绑定到的本地端口。</p>
+<h4 id="Socket-的常用方法"><a href="#Socket-的常用方法" class="headerlink" title="Socket 的常用方法"></a>Socket 的常用方法</h4><p>Socket的常用方法如下所示。</p>
+<ul>
+<li><code>void bind(SocketAddress bindpoint)</code>：将套接字绑定到本地地址。</li>
+<li><code>void close()</code>：关闭此套接字。</li>
+<li><code>void connect(SocketAddress endpoint)</code>：将此套接字连接到服务器。</li>
+<li><code>InetAddress getInetAddress()</code>：返回套接字的连接地址。</li>
+<li><code>InetAddress getLocalAddress()</code>：获取套接字绑定的本地地址。</li>
+<li><code>InputStream getInputStream()</code>：返回此套接字的输入流。</li>
+<li><code>OutputStream getOutputStream()</code>：返回此套接字的输出流。</li>
+<li><code>SocketAddress getLocalSocketAddress()</code>：返回此套接字绑定的端点地址，如果尚未绑定则返回 null。</li>
+<li><code>SocketAddress getRemoteSocketAddress()</code>：返回此套接字的连接的端点地址，如果尚未连接则返回 null。</li>
+<li><code>int getLoacalPort()</code>：返回此套接字绑定的本地端口。</li>
+<li><code>intgetPort()</code>：返回此套接字连接的远程端口。</li>
+</ul>
+<h2 id="Spring-Boot-搭建TCP-Socket"><a href="#Spring-Boot-搭建TCP-Socket" class="headerlink" title="Spring Boot  搭建TCP Socket"></a>Spring Boot  搭建TCP Socket</h2><p>业务场景是模拟室温体温传感器发送环境温度和体温数据通过网关传送到服务器,服务器接收消息<br>使用的技术栈:<br>springboot + socket +(并发场景+线程池)</p>
+<h5 id="maven依赖导入"><a href="#maven依赖导入" class="headerlink" title="maven依赖导入"></a>maven依赖导入</h5><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--字节转换--&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">	&lt;groupId&gt;commons-codec&lt;/groupId&gt;</span><br><span class="line">	&lt;artifactId&gt;commons-codec&lt;/artifactId&gt;</span><br><span class="line">	&lt;version&gt;1.12&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">	&lt;groupId&gt;org.projectlombok&lt;/groupId&gt;</span><br><span class="line">	&lt;artifactId&gt;lombok&lt;/artifactId&gt;</span><br><span class="line">	&lt;version&gt;1.16.20&lt;/version&gt;</span><br><span class="line">	&lt;scope&gt;provided&lt;/scope&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+
+<h5 id="首先启动服务端socket-创建-SocketServer"><a href="#首先启动服务端socket-创建-SocketServer" class="headerlink" title="首先启动服务端socket,创建 SocketServer"></a>首先启动服务端socket,创建 SocketServer</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Slf4j</span></span><br><span class="line"><span class="meta">@Data</span></span><br><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="meta">@NoArgsConstructor</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SocketServer</span> </span>&#123;</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">private</span> Integer port = <span class="number">9090</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">boolean</span> started;</span><br><span class="line">    <span class="keyword">private</span> ServerSocket serverSocket;</span><br><span class="line">    <span class="comment">// 防止重复创建socket线程链接对象浪费资源</span></span><br><span class="line">    <span class="keyword">private</span> ExecutorService executorService = Executors.newCachedThreadPool();</span><br><span class="line"> </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">start</span><span class="params">()</span></span>&#123;</span><br><span class="line">        start(<span class="keyword">null</span>);</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">start</span><span class="params">(Integer port)</span></span>&#123;</span><br><span class="line">        log.info(<span class="string">&quot;port: &#123;&#125;, &#123;&#125;&quot;</span>, <span class="keyword">this</span>.port, port);</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            serverSocket =  <span class="keyword">new</span> ServerSocket(port == <span class="keyword">null</span> ? <span class="keyword">this</span>.port : port);</span><br><span class="line">            started = <span class="keyword">true</span>;</span><br><span class="line">            log.info(<span class="string">&quot;Socket服务已启动，占用端口： &#123;&#125;&quot;</span>, serverSocket.getLocalPort());</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">            log.error(<span class="string">&quot;端口冲突,异常信息：&#123;&#125;&quot;</span>, e);</span><br><span class="line">            System.exit(<span class="number">0</span>);</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line">        <span class="keyword">while</span>  (<span class="keyword">true</span>)&#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="comment">// 开启socket监听</span></span><br><span class="line">                Socket socket = serverSocket.accept();</span><br><span class="line">                ClientSocket register = register(socket);</span><br><span class="line">                <span class="comment">// 在此判断是否重复创建socket对象线程</span></span><br><span class="line">                <span class="keyword">if</span> (register != <span class="keyword">null</span>)&#123;</span><br><span class="line">                    executorService.submit(register);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>该类主要是启动socket监听端口,并开启监听创建ClientSocket对象</p>
+<h5 id="创建全局Map存放现以链接服务器的socket-SocketPool"><a href="#创建全局Map存放现以链接服务器的socket-SocketPool" class="headerlink" title="创建全局Map存放现以链接服务器的socket  SocketPool"></a>创建全局Map存放现以链接服务器的socket  SocketPool</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SocketPool</span> </span>&#123;</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> ConcurrentHashMap&lt;String, ClientSocket&gt; ONLINE_SOCKET_MAP = <span class="keyword">new</span> ConcurrentHashMap&lt;&gt;();</span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">add</span><span class="params">(ClientSocket clientSocket)</span></span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (clientSocket != <span class="keyword">null</span> &amp;&amp; !clientSocket.getKey().isEmpty())</span><br><span class="line">            ONLINE_SOCKET_MAP.put(clientSocket.getKey(), clientSocket);</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">remove</span><span class="params">(String key)</span></span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (!key.isEmpty())</span><br><span class="line">            ONLINE_SOCKET_MAP.remove(key);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="封装socket对象-ClientSocket-每个链接都是一个ClientSocket对象-我们可以在此类中和客户端进行收到等操作达到监听效果-也可以将收到的数据保存到数据库中-以便后续业务需求"><a href="#封装socket对象-ClientSocket-每个链接都是一个ClientSocket对象-我们可以在此类中和客户端进行收到等操作达到监听效果-也可以将收到的数据保存到数据库中-以便后续业务需求" class="headerlink" title="封装socket对象 ClientSocket 每个链接都是一个ClientSocket对象.我们可以在此类中和客户端进行收到等操作达到监听效果.也可以将收到的数据保存到数据库中,以便后续业务需求."></a>封装socket对象 ClientSocket 每个链接都是一个ClientSocket对象.我们可以在此类中和客户端进行收到等操作达到监听效果.也可以将收到的数据保存到数据库中,以便后续业务需求.</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Slf4j</span></span><br><span class="line"><span class="meta">@Data</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ClientSocket</span> <span class="keyword">implements</span> <span class="title">Runnable</span> </span>&#123;</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">private</span> Socket socket;</span><br><span class="line">    <span class="keyword">private</span> DataInputStream inputStream;</span><br><span class="line">    <span class="keyword">private</span> DataOutputStream outputStream;</span><br><span class="line">    <span class="keyword">private</span> String key;</span><br><span class="line">    <span class="keyword">private</span> String message;</span><br><span class="line"> </span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">while</span> (<span class="keyword">true</span>)&#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                onMessage(<span class="keyword">this</span>);</span><br><span class="line">                log.info(LocalDateTime.now()+<span class="string">&quot;当前设备:&quot;</span>+<span class="keyword">this</span>.key+<span class="string">&quot; 接收到数据: &lt;&lt;&lt;&lt;&lt;&lt;&quot;</span> + <span class="keyword">this</span>.message);</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (isSocketClosed(<span class="keyword">this</span>))&#123;</span><br><span class="line">                log.info(<span class="string">&quot;客户端已关闭,其Key值为：&#123;&#125;&quot;</span>, <span class="keyword">this</span>.getKey());</span><br><span class="line">                <span class="comment">//关闭对应的服务端资源</span></span><br><span class="line">                close(<span class="keyword">this</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="创建socket任务处理器-SocketHandler-里面封装读写数据-销毁链接-等方法"><a href="#创建socket任务处理器-SocketHandler-里面封装读写数据-销毁链接-等方法" class="headerlink" title="创建socket任务处理器 SocketHandler,里面封装读写数据,销毁链接,等方法."></a>创建socket任务处理器 SocketHandler,里面封装读写数据,销毁链接,等方法.</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Slf4j</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SocketHandler</span> </span>&#123;</span><br><span class="line"> </span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 将连接的Socket注册到Socket池中</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> socket</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> ClientSocket <span class="title">register</span><span class="params">(Socket socket)</span></span>&#123;</span><br><span class="line">        ClientSocket clientSocket = <span class="keyword">new</span> ClientSocket();</span><br><span class="line">        clientSocket.setSocket(socket);</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            clientSocket.setInputStream(<span class="keyword">new</span> DataInputStream(socket.getInputStream()));</span><br><span class="line">            clientSocket.setOutputStream(<span class="keyword">new</span> DataOutputStream(socket.getOutputStream()));</span><br><span class="line">            <span class="keyword">byte</span>[] bytes = <span class="keyword">new</span> <span class="keyword">byte</span>[<span class="number">1024</span>];</span><br><span class="line">            clientSocket.getInputStream().read(bytes);</span><br><span class="line">            clientSocket.setKey(<span class="keyword">new</span> String(bytes, <span class="string">&quot;utf-8&quot;</span>));</span><br><span class="line">            add(clientSocket);</span><br><span class="line">            <span class="keyword">return</span> clientSocket;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 向指定客户端发送信息</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> clientSocket</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> message</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line"> </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">sendMessage</span><span class="params">(ClientSocket clientSocket, String message)</span></span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            log.info(<span class="string">&quot;发送消息到客户端  : &gt;&gt;&gt;&gt;&gt;&quot;</span> + message);</span><br><span class="line">            clientSocket.getOutputStream().write(message.getBytes(<span class="string">&quot;utf-8&quot;</span>));</span><br><span class="line">            <span class="comment">//clientSocket.getOutputStream().writeUTF(message);</span></span><br><span class="line">        &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">            log.error(<span class="string">&quot;发送信息异常：&#123;&#125;&quot;</span>, e);</span><br><span class="line">            close(clientSocket);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获取指定客户端的上传信息</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> clientSocket</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">onMessage</span><span class="params">(ClientSocket clientSocket)</span></span>&#123;</span><br><span class="line">        <span class="keyword">byte</span>[] keyByte = <span class="keyword">new</span> <span class="keyword">byte</span>[<span class="number">1024</span>];</span><br><span class="line">        <span class="keyword">byte</span>[] msgByte = <span class="keyword">new</span> <span class="keyword">byte</span>[<span class="number">1</span>];</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">// 第一次先发送序列号</span></span><br><span class="line">            <span class="keyword">if</span>(StringUtils.isEmpty(clientSocket.getKey())) &#123;</span><br><span class="line">                clientSocket.getInputStream().read(keyByte);</span><br><span class="line">                clientSocket.setKey(<span class="keyword">new</span> String(keyByte, <span class="string">&quot;UTF-8&quot;</span>));</span><br><span class="line">                <span class="comment">//return clientSocket.getKey();</span></span><br><span class="line">                <span class="comment">// 以后发送数据</span></span><br><span class="line">            &#125;<span class="keyword">else</span> &#123;</span><br><span class="line">                String info = <span class="string">&quot;&quot;</span>;</span><br><span class="line">                <span class="keyword">while</span> (<span class="keyword">true</span>) &#123;</span><br><span class="line">                    <span class="keyword">if</span> (clientSocket.getInputStream().available() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">                        clientSocket.getInputStream().read(msgByte);</span><br><span class="line">                        String tempStr = HexEcodeUtil.ByteArrayToHexStr(msgByte);</span><br><span class="line">                        info += tempStr;</span><br><span class="line">                        <span class="comment">//已经读完</span></span><br><span class="line">                        <span class="keyword">if</span> (clientSocket.getInputStream().available() == <span class="number">0</span>) &#123;</span><br><span class="line">                            <span class="comment">//重置,不然每次收到的数据都会累加起来</span></span><br><span class="line">                            clientSocket.setMessage(info);</span><br><span class="line">                            <span class="keyword">break</span>;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">//return clientSocket.getMessage();</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">            close(clientSocket);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//return null;</span></span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定Socket资源回收</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> clientSocket</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">close</span><span class="params">(ClientSocket clientSocket)</span></span>&#123;</span><br><span class="line">        log.info(<span class="string">&quot;进行资源回收&quot;</span>);</span><br><span class="line">        <span class="keyword">if</span> (clientSocket != <span class="keyword">null</span>)&#123;</span><br><span class="line">            log.info(<span class="string">&quot;开始回收socket相关资源，其Key为&#123;&#125;&quot;</span>, clientSocket.getKey());</span><br><span class="line">            remove(clientSocket.getKey());</span><br><span class="line">            Socket socket = clientSocket.getSocket();</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                socket.shutdownInput();</span><br><span class="line">                socket.shutdownOutput();</span><br><span class="line">            &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">                log.error(<span class="string">&quot;关闭输入输出流异常，&#123;&#125;&quot;</span>, e);</span><br><span class="line">            &#125;<span class="keyword">finally</span> &#123;</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    socket.close();</span><br><span class="line">                &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">                    log.error(<span class="string">&quot;关闭socket异常&#123;&#125;&quot;</span>, e);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 发送数据包，判断数据连接状态</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> clientSocket</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">isSocketClosed</span><span class="params">(ClientSocket clientSocket)</span></span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            clientSocket.getSocket().sendUrgentData(<span class="number">1</span>);</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="最后一步将socket随spring容器启动类一同启动"><a href="#最后一步将socket随spring容器启动类一同启动" class="headerlink" title="最后一步将socket随spring容器启动类一同启动"></a>最后一步将socket随spring容器启动类一同启动</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        ApplicationContext run = SpringApplication.run(CollectionApplication.class, args);</span><br><span class="line">        run.getBean(SocketServer.class).start();</span><br><span class="line"> </span><br><span class="line">    &#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>至此demo基本完成,有人会奇怪前面pom导入的ommons-codec干嘛用的,这是遇到的坑,因为网关设备推送的数据是16进制码,String在读取数据转码的时候会乱码,而设备序列号却不会乱码….一度困扰我不知道怎么回事,后来查资料反应过来可能是编码的问题,于是又写了个转码的util(如果数据包不是16进制码完全用不到ommons-codec包)</p>
+<h5 id="util"><a href="#util" class="headerlink" title="util"></a>util</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 16进制转换工具</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">@Slf4j</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">HexEcodeUtil</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//16进制数字字符集</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String HEXMAXSTRING = <span class="string">&quot;0123456789ABCDEF&quot;</span>;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String HEXMINSTRING = <span class="string">&quot;0123456789abcdef&quot;</span>;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * byte[]转16进制Str</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> byteArray</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> String <span class="title">ByteArrayToHexStr</span><span class="params">(<span class="keyword">byte</span>[] byteArray)</span></span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (byteArray == <span class="keyword">null</span>)</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">        <span class="keyword">char</span>[] hexArray = HEXMAXSTRING.toCharArray();</span><br><span class="line">        <span class="keyword">char</span>[] hexChars = <span class="keyword">new</span> <span class="keyword">char</span>[byteArray.length * <span class="number">2</span>];</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; byteArray.length; i++)&#123;</span><br><span class="line">            <span class="keyword">int</span> temp = byteArray[i] &amp; <span class="number">0xFF</span>;</span><br><span class="line">            hexChars[i * <span class="number">2</span>] = hexArray[temp &gt;&gt;&gt; <span class="number">4</span>];</span><br><span class="line">            hexChars[i * <span class="number">2</span> + <span class="number">1</span>] = hexArray[temp &amp; <span class="number">0x0F</span>];</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> String(hexChars);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Str转16进制Str</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> str</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> String <span class="title">StrToHexStr</span><span class="params">(String str)</span> </span>&#123;</span><br><span class="line">        <span class="comment">//根据默认编码获取字节数组</span></span><br><span class="line">        <span class="keyword">byte</span>[] bytes = str.getBytes();</span><br><span class="line">        StringBuilder stringBuilder = <span class="keyword">new</span> StringBuilder(bytes.length * <span class="number">2</span>);</span><br><span class="line">        <span class="comment">//将字节数组中每个字节拆解成2位16进制整数</span></span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; bytes.length; i++)&#123;</span><br><span class="line">            stringBuilder.append(<span class="string">&quot;0x&quot;</span>);</span><br><span class="line">            stringBuilder.append(HEXMAXSTRING.charAt((bytes[i] &amp; <span class="number">0xf0</span>) &gt;&gt; <span class="number">4</span>));</span><br><span class="line">            stringBuilder.append(HEXMAXSTRING.charAt((bytes[i] &amp; <span class="number">0x0f</span>) &gt;&gt; <span class="number">0</span>));</span><br><span class="line">            <span class="comment">//去掉末尾的逗号</span></span><br><span class="line">            <span class="keyword">if</span> (i != bytes.length - <span class="number">1</span>)</span><br><span class="line">                stringBuilder.append(<span class="string">&quot;,&quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> stringBuilder.toString();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 16进制Str转byte[]</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> hexStr 不带空格、不带0x、不带逗号的16进制Str,如:06EEF7F1</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">byte</span>[] HexStrToByteArray(String hexStr)&#123;</span><br><span class="line">        <span class="keyword">byte</span>[] byteArray = <span class="keyword">new</span> <span class="keyword">byte</span>[hexStr.length() / <span class="number">2</span>];</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; byteArray.length; i++)&#123;</span><br><span class="line">            String subStr = hexStr.substring(<span class="number">2</span> * i, <span class="number">2</span> * i + <span class="number">2</span>);</span><br><span class="line">            byteArray[i] = ((<span class="keyword">byte</span>) Integer.parseInt(subStr, <span class="number">16</span>));</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> byteArray;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 温度湿度数据转换</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Map&lt;String , String&gt; <span class="title">HexToRead</span><span class="params">(String info)</span></span>&#123;</span><br><span class="line">        HashMap&lt;String, String&gt; hashMap = <span class="keyword">new</span> HashMap&lt;&gt;();</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> hashMap;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 将16进制字符串转换为byte数组</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> hexItr 16进制字符串</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">byte</span>[] hexItr2Arr(String hexItr) &#123;</span><br><span class="line">     <span class="comment">/*   try &#123;</span></span><br><span class="line"><span class="comment">            */</span><span class="comment">/*return Hex.decodeHex(hexItr);*/</span><span class="comment">/*</span></span><br><span class="line"><span class="comment">        &#125; catch (DecoderException e) &#123;</span></span><br><span class="line"><span class="comment">            log.info(&quot;16进制字符串转byte异常!&quot;);</span></span><br><span class="line"><span class="comment">            e.printStackTrace();</span></span><br><span class="line"><span class="comment">        &#125;</span></span><br><span class="line"><span class="comment">        return null;*/</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 16进制转换成为string类型字符串</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> s</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> String <span class="title">hexStringToString</span><span class="params">(String s)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (s == <span class="keyword">null</span> || s.equals(<span class="string">&quot;&quot;</span>)) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        s = s.replace(<span class="string">&quot; &quot;</span>, <span class="string">&quot;&quot;</span>);</span><br><span class="line">        <span class="keyword">byte</span>[] baKeyword = <span class="keyword">new</span> <span class="keyword">byte</span>[s.length() / <span class="number">2</span>];</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; baKeyword.length; i++) &#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                baKeyword[i] = (<span class="keyword">byte</span>) (<span class="number">0xff</span> &amp; Integer.parseInt(s.substring(i * <span class="number">2</span>, i * <span class="number">2</span> + <span class="number">2</span>), <span class="number">16</span>));</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            s = <span class="keyword">new</span> String(baKeyword, <span class="string">&quot;UTF-8&quot;</span>);</span><br><span class="line">            <span class="keyword">new</span> String();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e1) &#123;</span><br><span class="line">            e1.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> s;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 16进制直接转换成为字符串(无需Unicode解码)</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> hexStr</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> String <span class="title">hexStr2Str</span><span class="params">(String hexStr)</span> </span>&#123;</span><br><span class="line">        String str = <span class="string">&quot;0123456789ABCDEF&quot;</span>;</span><br><span class="line">        <span class="keyword">char</span>[] hexs = hexStr.toCharArray();</span><br><span class="line">        <span class="keyword">byte</span>[] bytes = <span class="keyword">new</span> <span class="keyword">byte</span>[hexStr.length() / <span class="number">2</span>];</span><br><span class="line">        <span class="keyword">int</span> n;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; bytes.length; i++) &#123;</span><br><span class="line">            n = str.indexOf(hexs[<span class="number">2</span> * i]) * <span class="number">16</span>;</span><br><span class="line">            n += str.indexOf(hexs[<span class="number">2</span> * i + <span class="number">1</span>]);</span><br><span class="line">            bytes[i] = (<span class="keyword">byte</span>) (n &amp; <span class="number">0xff</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> String(bytes);</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        <span class="comment">//byte[] bytes = hexItr2Arr(&quot;454E383739465134563249393936394F&quot;);</span></span><br><span class="line">        <span class="keyword">byte</span>[] bytes = hexItr2Arr(<span class="string">&quot;010300000002C40B010304012202585B5F&quot;</span>);</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            String s = <span class="keyword">new</span> String(bytes, <span class="string">&quot;UTF-8&quot;</span>);</span><br><span class="line">            log.info(s);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+ 
+      <!-- reward -->
+      
+      <div id="reword-out">
+        <div id="reward-btn">
+          打赏
+        </div>
+      </div>
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>版权声明： </strong>
+          
+          本博客所有文章除特别声明外，著作权归作者所有。转载请注明出处！
+          
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=http://example.com/2021/05/02/Java%E5%AE%9E%E7%8E%B0TCP%E7%BC%96%E7%A8%8B/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/TCP%E7%BC%96%E7%A8%8B/" rel="tag">TCP编程</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java/" rel="tag">java</a></li></ul>
+
+    </footer>
+  </div>
+
+   
+   
+<!-- valine评论 -->
+<div id="vcomments-box">
+  <div id="vcomments"></div>
+</div>
+<script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/valine@1.4.14/dist/Valine.min.js"></script>
+<script>
+  new Valine({
+    el: "#vcomments",
+    app_id: "FK44LjKAyAxnztwTTUtjxaRV-gzGzoHsz",
+    app_key: "C0OoL7n17zI2kyURsJdE0APu",
+    path: window.location.pathname,
+    avatar: "monsterid",
+    placeholder: "给我的文章加点评论吧~",
+    recordIP: true,
+	enableQQ: true,
+	boolean: true,
+  });
+  const infoEle = document.querySelector("#vcomments .info");
+  if (infoEle && infoEle.childNodes && infoEle.childNodes.length > 0) {
+    infoEle.childNodes.forEach(function (item) {
+      item.parentNode.removeChild(item);
+    });
+  }
+</script>
+<style>
+  #vcomments-box {
+    padding: 5px 30px;
+  }
+
+  @media screen and (max-width: 800px) {
+    #vcomments-box {
+      padding: 5px 0px;
+    }
+  }
+
+  #vcomments-box #vcomments {
+    background-color: #fff;
+  }
+
+  .v .vlist .vcard .vh {
+    padding-right: 20px;
+  }
+
+  .v .vlist .vcard {
+    padding-left: 10px;
+  }
+</style>
+
+ 
+   
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2021
+        <i class="ri-heart-fill heart_icon"></i> Mr.Wang
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>访问人数:<span id="busuanzi_value_site_uv"></span></span>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>浏览次数:<span id="busuanzi_value_page_pv"></span></span>
+</span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+			生活一团糟
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="BLUSH"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/2019/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search"  title="搜索">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+      <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+        <i class="ri-rss-line"></i>
+      </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    
+<script src="/js/jquery-2.0.3.min.js"></script>
+ 
+<script src="/js/lazyload.min.js"></script>
+
+<!-- Tocbot -->
+ 
+<script src="/js/tocbot.min.js"></script>
+
+<script>
+  tocbot.init({
+    tocSelector: ".tocbot",
+    contentSelector: ".article-entry",
+    headingSelector: "h1, h2, h3, h4, h5, h6",
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: "main",
+    positionFixedSelector: ".tocbot",
+    positionFixedClass: "is-position-fixed",
+    fixedSidebarOffset: "auto",
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+
+<script src="/dist/main.js"></script>
+
+<!-- ImageViewer -->
+ <!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script> 
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+ 
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+ 
+<!-- ClickLove -->
+ 
+<script src="/js/clickLove.js"></script>
+ 
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+ 
+<link rel="stylesheet" href="/css/clipboard.css">
+ <script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+ 
+<!-- CanvasBackground -->
+ 
+<script src="/js/dz.js"></script>
+ 
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({ theme: "forest" });
+  }
+</script>
+
+
+    
+    <div id="music">
+    
+    
+    
+    <iframe frameborder="no" border="1" marginwidth="0" marginheight="0" width="200" height="52"
+        src="//music.163.com/outchain/player?type=2&id=1468957767&auto=1&height=32"></iframe>
+</div>
+
+<style>
+    #music {
+        position: fixed;
+        right: 15px;
+        bottom: 0;
+        z-index: 998;
+    }
+</style>
+    
+  </div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/hijiki.model.json"},"display":{"position":"left","width":150,"height":300,"hOffset":80,"vOffset":-70},"mobile":{"show":false,"scale":0.5},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+
+</html>
