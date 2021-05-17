@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-CN">
+  
+
+    <head>
+      <meta charset="utf-8" />
+        
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1"
+      />
+      <title>Socket Server的N种并发模型汇总 |  BLUSH</title>
+  <meta name="generator" content="hexo-theme-ayer">
+      
+      <link rel="shortcut icon" href="/favicon.ico" />
+       
+<link rel="stylesheet" href="/dist/main.css">
+
+      <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css"
+      />
+      
+<link rel="stylesheet" href="/css/custom.css">
+ 
+      <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+       
+ 
+
+      <!-- mermaid -->
+      
+    </head>
+  </html>
+</html>
+<script type="text/javascript">
+// 浏览器搞笑标题
+var OriginTitle = document.title;
+var titleTime;
+document.addEventListener('visibilitychange', function () {
+    if (location.href != "https://www.xxxzhy.com/"){//主页不变
+        if (document.hidden) {
+            //$('[rel="icon"]').attr('href', "/funny.ico");
+            document.title = '/(ㄒoㄒ)/你弄丢了XXXZhy';
+            clearTimeout(titleTime);
+        }else {
+            //$('[rel="icon"]').attr('href', "/favicon.ico");
+            document.title = '(ฅ>ω<*ฅ) 噫又好啦~' + OriginTitle;
+            titleTime = setTimeout(function () {
+                document.title = OriginTitle;
+            }, 2000);
+        }
+    }
+});
+</script>
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article
+  id="post-Socket-Server的N种并发模型汇总"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  Socket Server的N种并发模型汇总
+</h1>
+ 
+
+      
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2021/05/17/Socket-Server%E7%9A%84N%E7%A7%8D%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B%E6%B1%87%E6%80%BB/" class="article-date">
+  <time datetime="2021-05-17T03:18:38.000Z" itemprop="datePublished">2021-05-17</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Java/">Java</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> 字数统计:</span>
+            <span class="post-count">3.1k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> 阅读时长≈</span>
+            <span class="post-count">11 分钟</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <p><strong>这些模型与编程语言本身无关</strong>，有的编程语言可能在语法上直接透明了模型本质，所以开发者没必要一定要基于模型去编写，只是需要知道和了解并发模型的构成和特点即可。</p>
+<span id="more"></span>
+
+<p><img src="/2021/05/17/Socket-Server%E7%9A%84N%E7%A7%8D%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B%E6%B1%87%E6%80%BB/head.jpeg" alt="head" title="head"></p>
+<p>那么在了解并发模型之前, 我们需要两个必备二点前置知识:</p>
+<ul>
+<li>socket网络编程</li>
+<li>多路IO复用机制</li>
+<li>多线程/多进程等并发编程理论</li>
+</ul>
+<h3 id="模型一、单线程Accept-无IO复用"><a href="#模型一、单线程Accept-无IO复用" class="headerlink" title="模型一、单线程Accept(无IO复用)**"></a>模型一、单线程Accept(无IO复用)**</h3><h4 id="1-模型结构图"><a href="#1-模型结构图" class="headerlink" title="(1)模型结构图"></a>(1)模型结构图</h4><p><img src="/2021/05/17/Socket-Server%E7%9A%84N%E7%A7%8D%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B%E6%B1%87%E6%80%BB/1616677706413-f139f7bd-5c0f-445a-a0d0-c174ccf97937.png" alt="模型1" title="模型1"></p>
+<h4 id="2-模型分析"><a href="#2-模型分析" class="headerlink" title="(2)模型分析"></a>(2)模型分析</h4><p>①主线程<code>main thread</code>执行阻塞Accept，每次客户端Connect链接过来，<code>main thread</code>中accept响应并建立连接<br>② 创建链接成功，得到<code>Connfd1</code>套接字后, 依然在<code>main thread</code>串行处理套接字读写，并处理业务。<br>③ 在②处理业务中，如果有新客户端<code>Connect</code>过来，<code>Server</code>无响应，直到当前套接字全部业务处理完毕。<br>④ 当前客户端处理完后，完毕链接，处理下一个客户端请求。</p>
+<h4 id="3-优缺点"><a href="#3-优缺点" class="headerlink" title="(3) 优缺点"></a>(3) 优缺点</h4><p><strong>优点</strong>：</p>
+<ul>
+<li>socket编程流程清晰且简单，适合学习使用，了解socket基本编程流程。</li>
+</ul>
+<p><strong>缺点</strong>：</p>
+<ul>
+<li><p>该模型并非并发模型，是串行的服务器，同一时刻，监听并响应最大的网络请求量为<code>1</code>。 即并发量为<code>1</code>。</p>
+</li>
+<li><p>仅适合学习基本socket编程，不适合任何服务器Server构建。</p>
+</li>
+</ul>
+<hr>
+<h3 id="模型二、单线程Accept-多线程读写业务（无IO复用）"><a href="#模型二、单线程Accept-多线程读写业务（无IO复用）" class="headerlink" title="模型二、单线程Accept+多线程读写业务（无IO复用）"></a>模型二、单线程Accept+多线程读写业务（无IO复用）</h3><h4 id="1-模型结构图-1"><a href="#1-模型结构图-1" class="headerlink" title="(1) 模型结构图"></a>(1) 模型结构图</h4><p><img src="/2021/05/17/Socket-Server%E7%9A%84N%E7%A7%8D%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B%E6%B1%87%E6%80%BB/1616688245050-35e733ed-65c5-42f6-9fd7-a69ffbbdee72.webp"></p>
+<h4 id="2-模型分析-1"><a href="#2-模型分析-1" class="headerlink" title="(2) 模型分析"></a>(2) 模型分析</h4><p>① 主线程<code>main thread</code>执行阻塞Accept，每次客户端Connect链接过来，<code>main thread</code>中accept响应并建立连接<br>② 创建链接成功，得到<code>Connfd1</code>套接字后，创建一个新线程<code>thread1</code>用来处理客户端的读写业务。<code>main thead</code>依然回到<code>Accept</code>阻塞等待新客户端。<br>③ <code>thread1</code>通过套接字<code>Connfd1</code>与客户端进行通信读写。<br>④ server在②处理业务中，如果有新客户端<code>Connect</code>过来，<code>main thread</code>中<code>Accept</code>依然响应并建立连接，重复②过程。</p>
+<h4 id="3-优缺点-1"><a href="#3-优缺点-1" class="headerlink" title="(3) 优缺点"></a>(3) 优缺点</h4><p><strong>优点</strong>：</p>
+<ul>
+<li>基于<code>模型一：单线程Accept（无IO复用）</code> 支持了并发的特性。</li>
+<li>使用灵活，一个客户端对应一个线程单独处理，<code>server</code>处理业务内聚程度高，客户端无论如何写，服务端均会有一个线程做资源响应。</li>
+</ul>
+<p><strong>缺点</strong>：</p>
+<ul>
+<li>随着客户端的数量增多，需要开辟的线程也增加，客户端与server线程数量<code>1:1</code>正比关系，一次对于高并发场景，线程数量收到硬件上限瓶颈。</li>
+<li><strong>对于长链接，客户端一旦无业务读写，只要不关闭，server的对应线程依然需要保持连接(心跳、健康监测等机制)，占用连接资源和线程开销资源浪费。</strong></li>
+<li>仅适合客户端数量不大，并且数量可控的场景使用。</li>
+</ul>
+<p>仅适合学习基本socket编程，不适合任何服务器Server构建。</p>
+<hr>
+<h3 id="模型三、单线程多路IO复用"><a href="#模型三、单线程多路IO复用" class="headerlink" title="模型三、单线程多路IO复用"></a>模型三、单线程多路IO复用</h3><h4 id="1-模型结构图-2"><a href="#1-模型结构图-2" class="headerlink" title="(1) 模型结构图"></a>(1) 模型结构图</h4><p><img src="/2021/05/17/Socket-Server%E7%9A%84N%E7%A7%8D%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B%E6%B1%87%E6%80%BB/1616688633756-ba23b1cd-e0be-4be8-95b3-6be01460e37c.webp"></p>
+<h4 id="2-模型分析-2"><a href="#2-模型分析-2" class="headerlink" title="(2) 模型分析"></a>(2) 模型分析</h4><p>① 主线程<code>main thread</code>创建<code>listenFd</code>之后，采用多路I/O复用机制(如:select、epoll)进行IO状态阻塞监控。有<code>Client1</code>客户端<code>Connect</code>请求，I/O复用机制检测到<code>ListenFd</code>触发读事件，则进行<code>Accept</code>建立连接，并将新生成的<code>connFd1</code>加入到<code>监听I/O集合</code>中。<br>② <code>Client1</code>再次进行正常读写业务请求，<code>main thread</code>的<code>多路I/O复用机制</code>阻塞返回，会触该套接字的读/写事件等。<br>③ 对于<code>Client1</code>的读写业务，Server依然在<code>main thread</code>执行流程提继续执行，此时如果有新的客户端<code>Connect</code>链接请求过来，Server将没有即时响应。<br>④ 等到Server处理完一个连接的<code>Read+Write</code>操作，继续回到<code>多路I/O复用机制</code>阻塞，其他链接过来重复    ②、③流程。</p>
+<h4 id="3-优缺点-2"><a href="#3-优缺点-2" class="headerlink" title="(3) 优缺点"></a>(3) 优缺点</h4><p><strong>优点</strong>：</p>
+<ul>
+<li>单流程解决了可以同时监听多个客户端读写状态的模型，不需要<code>1:1</code>与客户端的线程数量关系。</li>
+<li>多路I/O复用阻塞，非忙询状态，不浪费CPU资源， CPU利用率较高。</li>
+</ul>
+<p><strong>缺点</strong>：</p>
+<ul>
+<li>虽然可以监听多个客户端的读写状态，但是同一时间内，只能处理一个客户端的读写操作，实际上读写的业务并发为1。</li>
+<li>多客户端访问Server，业务为串行执行，大量请求会有排队延迟现象，如图中⑤所示，当<code>Client3</code>占据<code>main thread</code>流程时，<code>Client1,Client2</code>流程卡在<code>IO复用</code>等待下次监听触发事件。</li>
+</ul>
+<hr>
+<h3 id="模型四、单线程多路IO复用-多线程读写业务-业务工作池"><a href="#模型四、单线程多路IO复用-多线程读写业务-业务工作池" class="headerlink" title="模型四、单线程多路IO复用+多线程读写业务(业务工作池)"></a>模型四、单线程多路IO复用+多线程读写业务(业务工作池)</h3><h4 id="1-模型结构图-3"><a href="#1-模型结构图-3" class="headerlink" title="(1) 模型结构图"></a>(1) 模型结构图</h4><p><img src="/2021/05/17/Socket-Server%E7%9A%84N%E7%A7%8D%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B%E6%B1%87%E6%80%BB/1616689164417-8213f1e4-bd9e-492a-b6b5-24889ffee173.webp"></p>
+<h4 id="2-模型分析-3"><a href="#2-模型分析-3" class="headerlink" title="(2) 模型分析"></a>(2) 模型分析</h4><p>① 主线程<code>main thread</code>创建<code>listenFd</code>之后，采用多路I/O复用机制(如:select、epoll)进行IO状态阻塞监控。有<code>Client1</code>客户端<code>Connect</code>请求，I/O复用机制检测到<code>ListenFd</code>触发读事件，则进行<code>Accept</code>建立连接，并将新生成的<code>connFd1</code>加入到<code>监听I/O集合</code>中。<br>② 当<code>connFd1</code>有可读消息，触发读事件，并且进行读写消息<br>③ <code>main thread</code>按照固定的协议读取消息，并且交给<code>worker pool</code>工作线程池， 工作线程池在server启动之前就已经开启固定数量的<code>thread</code>，里面的线程只处理消息业务，不进行套接字读写操作。<br>④ 工作池处理完业务，触发<code>connFd1</code>写事件，将回执客户端的消息通过<code>main thead</code>写给对方。</p>
+<h4 id="3-优缺点-3"><a href="#3-优缺点-3" class="headerlink" title="(3) 优缺点"></a>(3) 优缺点</h4><p><strong>优点</strong>：</p>
+<ul>
+<li>对于<code>模型三</code>, 将业务处理部分，通过工作池分离出来，减少多客户端访问Server，业务为串行执行，大量请求会有排队延迟时间。</li>
+<li>实际上读写的业务并发为1，但是业务流程并发为worker pool线程数量，加快了业务处理并行效率。</li>
+</ul>
+<p><strong>缺点</strong>：</p>
+<ul>
+<li>读写依然为<code>main thread</code>单独处理，最高读写并行通道依然为1.</li>
+<li>虽然多个worker线程处理业务，但是最后返回给客户端，依旧需要排队，因为出口还是<code>main thread</code>的<code>Read + Write</code></li>
+</ul>
+<hr>
+<h3 id="模型五、单线程IO复用-多线程IO复用-链接线程池"><a href="#模型五、单线程IO复用-多线程IO复用-链接线程池" class="headerlink" title="模型五、单线程IO复用+多线程IO复用(链接线程池)"></a>模型五、单线程IO复用+多线程IO复用(链接线程池)</h3><h4 id="1-模型结构图-4"><a href="#1-模型结构图-4" class="headerlink" title="(1) 模型结构图"></a>(1) 模型结构图</h4><p><img src="/2021/05/17/Socket-Server%E7%9A%84N%E7%A7%8D%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B%E6%B1%87%E6%80%BB/1616689339248-245248e8-11c0-4930-ae90-82d2b2ed0af9.webp"></p>
+<h4 id="2-模型分析-4"><a href="#2-模型分析-4" class="headerlink" title="(2) 模型分析"></a>(2) 模型分析</h4><p>① Server在启动监听之前，开辟固定数量(N)的线程，用<code>Thead Pool</code>线程池管理<br>② 主线程<code>main thread</code>创建<code>listenFd</code>之后，采用多路I/O复用机制(如:select、epoll)进行IO状态阻塞监控。有<code>Client1</code>客户端<code>Connect</code>请求，I/O复用机制检测到<code>ListenFd</code>触发读事件，则进行<code>Accept</code>建立连接，并将新生成的<code>connFd1</code>分发给<code>Thread Pool</code>中的某个线程进行监听。<br>③ <code>Thread Pool</code>中的每个<code>thread</code>都启动<code>多路I/O复用机制(select、epoll)</code>,用来监听<code>main thread</code>建立成功并且分发下来的socket套接字。<br>④ 如图， <code>thread</code>监听<code>ConnFd1、ConnFd2</code>, <code>thread2</code>监听<code>ConnFd3</code>,<code>thread3</code>监听<code>ConnFd4</code>. 当对应的<code>ConnFd</code>有读写事件，对应的线程处理该套接字的读写及业务。</p>
+<h4 id="3-优缺点-4"><a href="#3-优缺点-4" class="headerlink" title="(3) 优缺点"></a>(3) 优缺点</h4><p><strong>优点</strong>：</p>
+<ul>
+<li>将<code>main thread</code>的单流程读写，分散到多线程完成，这样增加了同一时刻的读写并行通道，并行通道数量<code>N</code>， <code>N</code>为线程池<code>Thread</code>数量。</li>
+<li>server同时监听的<code>ConnFd套接字</code>数量几乎成倍增大，之前的全部监控数量取决于<code>main thread</code>的<code>多路I/O复用机制</code>的最大限制***(select 默认为1024， epoll默认与内存大小相关，约3<del>6w不等)**<em>，所以理论单点Server最高响应并发数量为`N</em>(3</del>6W)<code>(</code>N<code>为线程池</code>Thread`数量，建议与CPU核心成比例1:1)。</li>
+<li>如果良好的线程池数量和CPU核心数适配，那么可以尝试CPU核心与Thread进行绑定，从而降低CPU的切换频率，提升每个<code>Thread</code>处理合理业务的效率，降低CPU切换成本开销。</li>
+</ul>
+<p><strong>缺点</strong>：</p>
+<ul>
+<li>虽然监听的并发数量提升，但是最高读写并行通道依然为<code>N</code>，而且多个身处同一个Thread的客户端，会出现读写延迟现象，实际上每个<code>Thread</code>的模型特征与<code>模型三：单线程多路IO复用</code>一致。</li>
+</ul>
+<hr>
+<h3 id="模型五-进程版-、单进程多路I-O复用-多进程多路I-O复用-进程池"><a href="#模型五-进程版-、单进程多路I-O复用-多进程多路I-O复用-进程池" class="headerlink" title="模型五(进程版)、单进程多路I/O复用+多进程多路I/O复用(进程池)"></a>模型五(进程版)、单进程多路I/O复用+多进程多路I/O复用(进程池)</h3><h4 id="1-模型结构图-5"><a href="#1-模型结构图-5" class="headerlink" title="(1) 模型结构图"></a>(1) 模型结构图</h4><p><img src="/2021/05/17/Socket-Server%E7%9A%84N%E7%A7%8D%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B%E6%B1%87%E6%80%BB/1616689390544-6c113ee7-14d9-4d69-9885-d5257ff852e9.webp"></p>
+<h4 id="2-模型分析-5"><a href="#2-模型分析-5" class="headerlink" title="(2) 模型分析"></a>(2) 模型分析</h4><p>与<code>五、单线程IO复用+多线程IO复用(链接线程池)</code>无大差异。<br>不同处</p>
+<ul>
+<li>进程和线程的内存布局不同导致，<code>main process</code>(主进程)不再进行<code>Accept</code>操作，而是将<code>Accept</code>过程分散到各个<code>子进程(process)</code>中.</li>
+<li>进程的特性，资源独立，所以<code>main process</code>如果Accept成功的fd，其他进程无法共享资源，所以需要各子进程自行Accept创建链接</li>
+<li><code>main process</code>只是监听<code>ListenFd</code>状态，一旦触发读事件(有新连接请求). 通过一些IPC(进程间通信：如信号、共享内存、管道)等, 让各自子进程<code>Process</code>竞争<code>Accept</code>完成链接建立，并各自监听。</li>
+</ul>
+<h4 id="3-优缺点-5"><a href="#3-优缺点-5" class="headerlink" title="(3) 优缺点"></a>(3) 优缺点</h4><p>与<code>五、单线程IO复用+多线程IO复用(链接线程池)</code>无大差异。<br>不同处:<br>多进程内存资源空间占用稍微大一些<br>多进程模型安全稳定型较强，这也是因为各自进程互不干扰的特点导致。</p>
+<hr>
+<h3 id="模型六、单线程多路I-O复用-多线程多路I-O复用-多线程"><a href="#模型六、单线程多路I-O复用-多线程多路I-O复用-多线程" class="headerlink" title="模型六、单线程多路I/O复用+多线程多路I/O复用+多线程"></a>模型六、单线程多路I/O复用+多线程多路I/O复用+多线程</h3><h4 id="1-模型结构图-6"><a href="#1-模型结构图-6" class="headerlink" title="(1) 模型结构图"></a>(1) 模型结构图</h4><p><img src="/2021/05/17/Socket-Server%E7%9A%84N%E7%A7%8D%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B%E6%B1%87%E6%80%BB/1616689390578-cb218afa-9a3a-40ad-9e73-813b334dfa04.webp"></p>
+<h4 id="2-模型分析-6"><a href="#2-模型分析-6" class="headerlink" title="(2) 模型分析"></a>(2) 模型分析</h4><p>① Server在启动监听之前，开辟固定数量(N)的线程，用<code>Thead Pool</code>线程池管理<br>② 主线程<code>main thread</code>创建<code>listenFd</code>之后，采用多路I/O复用机制(如:select、epoll)进行IO状态阻塞监控。有<code>Client1</code>客户端<code>Connect</code>请求，I/O复用机制检测到<code>ListenFd</code>触发读事件，则进行<code>Accept</code>建立连接，并将新生成的<code>connFd1</code>分发给<code>Thread Pool</code>中的某个线程进行监听。<br>③ <code>Thread Pool</code>中的每个<code>thread</code>都启动<code>多路I/O复用机制(select、epoll)</code>,用来监听<code>main thread</code>建立成功并且分发下来的socket套接字。一旦其中某个被监听的客户端套接字触发<code>I/O读写事件</code>,那么，会立刻开辟一个新线程来处理<code>I/O读写</code>业务。<br>④ 但某个读写线程完成当前读写业务，如果当前套接字没有被关闭，那么将当前客户端套接字<code>如:ConnFd3</code>重新加回线程池的监控线程中，同时自身线程自我销毁。</p>
+<h4 id="3-优缺点-6"><a href="#3-优缺点-6" class="headerlink" title="(3) 优缺点"></a>(3) 优缺点</h4><p><strong>优点</strong>：</p>
+<ul>
+<li><p>在<code>模型五、单线程IO复用+多线程IO复用(链接线程池)</code>基础上，除了能够保证同时响应的<code>最高并发数</code>，又能解决<code>读写并行通道</code>局限的问题。</p>
+</li>
+<li><p>同一时刻的读写并行通道，达到<code>最大化极限</code>，一个客户端可以对应一个单独执行流程处理读写业务，读写并行通道与客户端数量<code>1:1</code>关系。</p>
+</li>
+</ul>
+<p><strong>缺点</strong>：</p>
+<ul>
+<li>该模型过于理想化，因为要求CPU核心数量足够大。</li>
+<li>如果硬件CPU数量可数(目前的硬件情况)，那么该模型将造成大量的CPU切换成本浪费。因为为了保证读写并行通道与客户端<code>1:1</code>的关系，那么Server需要开辟的<code>Thread</code>数量就与客户端一致，那么线程池中做<code>多路I/O复用</code>的监听线程池绑定CPU数量将变得毫无意义。</li>
+<li>如果每个临时的读写<code>Thread</code>都能够绑定一个单独的CPU，那么此模型将是最优模型。但是目前CPU的数量无法与客户端的数量达到一个量级，目前甚至差的不是几个量级的事。</li>
+</ul>
+<hr>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>综上，我们整理了7中Server的服务器处理结构模型，每个模型都有各自的特点和优势，那么对于多少应付高并发和高CPU利用率的模型，目前多数采用的是模型五(或模型五进程版，如Nginx就是类似模型五进程版的改版)。<br>至于并发模型并非设计的约复杂越好，也不是线程开辟的越多越好，我们要考虑硬件的利用与和切换成本的开销。模型六设计就极为复杂，线程较多，但以当今的硬件能力无法支撑，反倒导致该模型性能极差。所以对于不同的业务场景也要选择适合的模型构建，并不是一定固定就要使用某个来应用。</p>
+ 
+      <!-- reward -->
+      
+      <div id="reword-out">
+        <div id="reward-btn">
+          打赏
+        </div>
+      </div>
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>版权声明： </strong>
+          
+          本博客所有文章除特别声明外，著作权归作者所有。转载请注明出处！
+          
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=http://example.com/2021/05/17/Socket-Server%E7%9A%84N%E7%A7%8D%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B%E6%B1%87%E6%80%BB/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/" rel="tag">Java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/SOCKET/" rel="tag">SOCKET</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/TCP/" rel="tag">TCP</a></li></ul>
+
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+    
+      <a href="/2021/05/14/uni-app%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">uni-app快速入门</div>
+      </a>
+    
+  </nav>
+
+   
+<!-- valine评论 -->
+<div id="vcomments-box">
+  <div id="vcomments"></div>
+</div>
+<script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/valine@1.4.14/dist/Valine.min.js"></script>
+<script>
+  new Valine({
+    el: "#vcomments",
+    app_id: "FK44LjKAyAxnztwTTUtjxaRV-gzGzoHsz",
+    app_key: "C0OoL7n17zI2kyURsJdE0APu",
+    path: window.location.pathname,
+    avatar: "monsterid",
+    placeholder: "给我的文章加点评论吧~",
+    recordIP: true,
+	enableQQ: true,
+	boolean: true,
+  });
+  const infoEle = document.querySelector("#vcomments .info");
+  if (infoEle && infoEle.childNodes && infoEle.childNodes.length > 0) {
+    infoEle.childNodes.forEach(function (item) {
+      item.parentNode.removeChild(item);
+    });
+  }
+</script>
+<style>
+  #vcomments-box {
+    padding: 5px 30px;
+  }
+
+  @media screen and (max-width: 800px) {
+    #vcomments-box {
+      padding: 5px 0px;
+    }
+  }
+
+  #vcomments-box #vcomments {
+    background-color: #fff;
+  }
+
+  .v .vlist .vcard .vh {
+    padding-right: 20px;
+  }
+
+  .v .vlist .vcard {
+    padding-left: 10px;
+  }
+</style>
+
+ 
+   
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2021
+        <i class="ri-heart-fill heart_icon"></i> Mr.Wang
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>访问人数:<span id="busuanzi_value_site_uv"></span></span>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>浏览次数:<span id="busuanzi_value_page_pv"></span></span>
+</span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+			生活一团糟
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="BLUSH"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/2019/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search"  title="搜索">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+      <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+        <i class="ri-rss-line"></i>
+      </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    
+<script src="/js/jquery-2.0.3.min.js"></script>
+ 
+<script src="/js/lazyload.min.js"></script>
+
+<!-- Tocbot -->
+ 
+<script src="/js/tocbot.min.js"></script>
+
+<script>
+  tocbot.init({
+    tocSelector: ".tocbot",
+    contentSelector: ".article-entry",
+    headingSelector: "h1, h2, h3, h4, h5, h6",
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: "main",
+    positionFixedSelector: ".tocbot",
+    positionFixedClass: "is-position-fixed",
+    fixedSidebarOffset: "auto",
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+
+<script src="/dist/main.js"></script>
+
+<!-- ImageViewer -->
+ <!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script> 
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+ 
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+ 
+<!-- ClickLove -->
+ 
+<script src="/js/clickLove.js"></script>
+ 
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+ 
+<link rel="stylesheet" href="/css/clipboard.css">
+ <script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+ 
+<!-- CanvasBackground -->
+ 
+<script src="/js/dz.js"></script>
+ 
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({ theme: "forest" });
+  }
+</script>
+
+
+    
+    <div id="music">
+    
+    
+    
+    <iframe frameborder="no" border="1" marginwidth="0" marginheight="0" width="200" height="52"
+        src="//music.163.com/outchain/player?type=2&id=1468957767&auto=1&height=32"></iframe>
+</div>
+
+<style>
+    #music {
+        position: fixed;
+        right: 15px;
+        bottom: 0;
+        z-index: 998;
+    }
+</style>
+    
+  </div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/hijiki.model.json"},"display":{"position":"left","width":150,"height":300,"hOffset":80,"vOffset":-70},"mobile":{"show":false,"scale":0.5},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+
+</html>
