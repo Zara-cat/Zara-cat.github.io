@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-CN">
+  
+
+    <head>
+      <meta charset="utf-8" />
+        
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1"
+      />
+      <title>Hibernate Validator参数校验 |  BLUSH</title>
+  <meta name="generator" content="hexo-theme-ayer">
+      
+      <link rel="shortcut icon" href="/favicon.ico" />
+       
+<link rel="stylesheet" href="/dist/main.css">
+
+      <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css"
+      />
+      
+<link rel="stylesheet" href="/css/custom.css">
+ 
+      <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+       
+ 
+
+      <!-- mermaid -->
+      
+    </head>
+  </html>
+</html>
+<script type="text/javascript">
+// 浏览器搞笑标题
+var OriginTitle = document.title;
+var titleTime;
+document.addEventListener('visibilitychange', function () {
+    if (location.href != "https://www.xxxzhy.com/"){//主页不变
+        if (document.hidden) {
+            //$('[rel="icon"]').attr('href', "/funny.ico");
+            document.title = '/(ㄒoㄒ)/你弄丢了XXXZhy';
+            clearTimeout(titleTime);
+        }else {
+            //$('[rel="icon"]').attr('href', "/favicon.ico");
+            document.title = '(ฅ>ω<*ฅ) 噫又好啦~' + OriginTitle;
+            titleTime = setTimeout(function () {
+                document.title = OriginTitle;
+            }, 2000);
+        }
+    }
+});
+</script>
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article
+  id="post-Hibernate-Validator参数校验"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  Hibernate Validator参数校验
+</h1>
+ 
+
+      
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2021/05/25/Hibernate-Validator%E5%8F%82%E6%95%B0%E6%A0%A1%E9%AA%8C/" class="article-date">
+  <time datetime="2021-05-25T06:04:44.000Z" itemprop="datePublished">2021-05-25</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/springBoot/">springBoot</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> 字数统计:</span>
+            <span class="post-count">2.6k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> 阅读时长≈</span>
+            <span class="post-count">10 分钟</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <p><a name="1GSko"></a></p>
+<h2 id="现在互联网生存环境"><a href="#现在互联网生存环境" class="headerlink" title="现在互联网生存环境"></a>现在互联网生存环境</h2><p><strong>在前端对数据进行校验的情况下，我们还是要对传入后端的数据再进行一遍校验，避免用户绕过浏览器直接通过一些 HTTP 工具直接向后端请求一些违法数据。</strong></p>
+<span id="more"></span>
+
+<p><strong><img src="/2021/05/25/Hibernate-Validator%E5%8F%82%E6%95%B0%E6%A0%A1%E9%AA%8C/1621834341360-44e0f8ea-5cb3-47f6-81a5-6480dd037036.jpeg" alt="head.jpeg"></strong><br><a name="VV3N5"></a></p>
+<h2 id="为什么要前后端都要去做参数校验"><a href="#为什么要前后端都要去做参数校验" class="headerlink" title="为什么要前后端都要去做参数校验?"></a>为什么要前后端都要去做参数校验?</h2><p><strong>我想很多小伙伴都有这个想法,为什么前端已经判断过参数了,正常情况下人家访问到接口的时候数据已经是可以安全的了,那后端检验的意义在哪里呢?我是这样理解的:’后端进行参数校验,是防止别人通过接口乱刷服务’。也就是 如果一些不安好心的人,通过接口刷我们的服务,随便那个参数我们都允许填入,会导致数据库中大量的脏数据、风险,如果注入的是病毒怎么办?所以,后端进行校验是必须要有的。</strong><br><a name="E3USL"></a></p>
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>在我们了解过后端做参数校验的重要性以后,我们在原始处理参数问题的时候,很经常而且很熟练的使用if else的判断校验方式(这个说的是我自己,哈哈哈 后来因为经理的一顿指责,哎,看来板砖也得要有好的小推车啊!!!!)<br>数据校验是在平时的编码过程中常做的工作，在系统的各个层可能都要去实现一些校验逻辑，再去做业务处理。这些繁琐的校验与我们的业务代码在一块就会显得臃肿。而且这些校验通常是业务无关的。这样让我们的工作事倍功半!!!<br><strong>下面开始进入正题</strong><br><a name="3zKKt"></a></p>
+<h2 id="Bean-Validation-2-0（JSR-380）"><a href="#Bean-Validation-2-0（JSR-380）" class="headerlink" title="Bean Validation 2.0（JSR 380）"></a>Bean Validation 2.0（JSR 380）</h2><p>JSR 380是用于bean验证的Java API的规范，是JavaEE和JavaSE的一部分，它使用@NotNull、@Min和@Max等注释确保bean的属性满足特定的标准。<br>此版本需要Java 8或更高版本，并利用Java 8中添加的新功能（如类型注释），并支持Optional和LocalDate等新类型。<br>有关规范的完整信息，请继续阅读<a target="_blank" rel="noopener" href="https://jcp.org/en/jsr/detail?id=380">JSR 380</a>。<br><a name="P8XmU"></a></p>
+<h2 id="Hibernate-Validator的简述"><a href="#Hibernate-Validator的简述" class="headerlink" title="Hibernate Validator的简述"></a>Hibernate Validator的简述</h2><p>Hibernate Validator是Bean Validation 2.0（JSR 380）的实现方式,这盘文章主要就是说HIbernate Validator的使用<br><strong>注意：hibernate-validator 与 持久层框架 <code>hibernate</code> 没有什么关系，hibernate-validator 是 hibernate 组织下的一个<a target="_blank" rel="noopener" href="https://github.com/hibernate/hibernate-validator">开源项目 </a>。</strong><br><strong>它和 <code>hibernate</code>没什么关系，放心大胆的使用吧。</strong><br><a name="FHmb1"></a></p>
+<h2 id="Hibernate-Validator的作用"><a href="#Hibernate-Validator的作用" class="headerlink" title="Hibernate Validator的作用"></a>Hibernate Validator的作用</h2><ul>
+<li>验证逻辑与业务逻辑之间进行了分离，降低了程序耦合度</li>
+<li>统一且规范的验证方式，无需你再次编写重复的验证代码<br><a name="dhOzS"></a></li>
+</ul>
+<h2 id="Hibernate-Validator的使用"><a href="#Hibernate-Validator的使用" class="headerlink" title="Hibernate Validator的使用"></a>Hibernate Validator的使用</h2><p><a name="YLX7I"></a></p>
+<h3 id="依赖"><a href="#依赖" class="headerlink" title="依赖"></a>依赖</h3><p>如果是springBoot项目,那么<code>spring-boot-starter-web</code>中就已经依赖<code>hibernate-validator</code>了</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;spring-boot-starter-web&lt;/artifactId&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+
+<p>注意springboot2.x后导入依赖需要手动</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&lt;!--参数校验:在springboot2.x之后 web起步依赖中不再含有该依赖 需要手动在引入依赖--&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">      &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">      &lt;artifactId&gt;spring-boot-starter-validation&lt;/artifactId&gt;</span><br><span class="line"> &lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+
+<p>如果是其他项目,那可以直接添加<code>hibernate-validator</code>依赖</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.hibernate.validator&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;hibernate-validator&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;6.0.17.Final&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+
+<p><a name="gp3wd"></a></p>
+<h3 id="约束注解"><a href="#约束注解" class="headerlink" title="约束注解"></a>约束注解</h3><p>validator-api-2.0的约束注解有22个，具体我们看下面表格<br><a name="1USK7"></a></p>
+<h4 id="空与非空检查"><a href="#空与非空检查" class="headerlink" title="空与非空检查"></a>空与非空检查</h4><table>
+<thead>
+<tr>
+<th>注解</th>
+<th>支持Java类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>@Null</td>
+<td>Object</td>
+<td>为null</td>
+</tr>
+<tr>
+<td>@NotNull</td>
+<td>Object</td>
+<td>不为null</td>
+</tr>
+<tr>
+<td>@NotBlank</td>
+<td>CharSequence</td>
+<td>不为null，且必须有一个非空格字符</td>
+</tr>
+<tr>
+<td>@NotEmpty</td>
+<td>CharSequence、Collection、Map、Array</td>
+<td>不为null，且不为空（length/size&gt;0）</td>
+</tr>
+</tbody></table>
+<p><a name="YDcwr"></a></p>
+<h4 id="Boolean值检查"><a href="#Boolean值检查" class="headerlink" title="Boolean值检查"></a>Boolean值检查</h4><table>
+<thead>
+<tr>
+<th>注解</th>
+<th>支持Java类型</th>
+<th>说明</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>@AssertTrue</td>
+<td>boolean、Boolean</td>
+<td>为true</td>
+<td>为null有效</td>
+</tr>
+<tr>
+<td>@AssertFalse</td>
+<td>boolean、Boolean</td>
+<td>为false</td>
+<td>为null有效</td>
+</tr>
+</tbody></table>
+<p><a name="EkeuO"></a></p>
+<h4 id="日期检查"><a href="#日期检查" class="headerlink" title="日期检查"></a>日期检查</h4><table>
+<thead>
+<tr>
+<th>注解</th>
+<th>支持Java类型</th>
+<th>说明</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>@Future</td>
+<td>Date、Calendar、Instant、LocalDate、LocalDateTime、LocalTime、MonthDay、OffsetDateTime、OffsetTime、Year、YearMonth、ZonedDateTime、HijrahDate、JapaneseDate、MinguoDate、ThaiBuddhistDate</td>
+<td>验证日期为当前时间之后</td>
+<td>为null有效</td>
+</tr>
+<tr>
+<td>@FutureOrPresent</td>
+<td>Date、Calendar、Instant、LocalDate、LocalDateTime、LocalTime、MonthDay、OffsetDateTime、OffsetTime、Year、YearMonth、ZonedDateTime、HijrahDate、JapaneseDate、MinguoDate、ThaiBuddhistDate</td>
+<td>验证日期为当前时间或之后</td>
+<td>为null有效</td>
+</tr>
+<tr>
+<td>@Past</td>
+<td>Date、Calendar、Instant、LocalDate、LocalDateTime、LocalTime、MonthDay、OffsetDateTime、OffsetTime、Year、YearMonth、ZonedDateTime、HijrahDate、JapaneseDate、MinguoDate、ThaiBuddhistDate</td>
+<td>验证日期为当前时间之前</td>
+<td>为null有效</td>
+</tr>
+<tr>
+<td>@PastOrPresent</td>
+<td>Date、Calendar、Instant、LocalDate、LocalDateTime、LocalTime、MonthDay、OffsetDateTime、OffsetTime、Year、YearMonth、ZonedDateTime、HijrahDate、JapaneseDate、MinguoDate、ThaiBuddhistDate</td>
+<td>验证日期为当前时间或之前</td>
+<td>为null有效</td>
+</tr>
+</tbody></table>
+<p><a name="rCNqR"></a></p>
+<h4 id="数值检查"><a href="#数值检查" class="headerlink" title="数值检查"></a>数值检查</h4><table>
+<thead>
+<tr>
+<th>注解</th>
+<th>支持Java类型</th>
+<th>说明</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>@Max</td>
+<td>BigDecimal、BigInteger，byte、short、int、long以及包装类</td>
+<td>小于或等于</td>
+<td>为null有效</td>
+</tr>
+<tr>
+<td>@Min</td>
+<td>BigDecimal、BigInteger，byte、short、int、long以及包装类</td>
+<td>大于或等于</td>
+<td>为null有效</td>
+</tr>
+<tr>
+<td>@DecimalMax</td>
+<td>BigDecimal、BigInteger、CharSequence，byte、short、int、long以及包装类</td>
+<td>小于或等于</td>
+<td>为null有效</td>
+</tr>
+<tr>
+<td>@DecimalMin</td>
+<td>BigDecimal、BigInteger、CharSequence，byte、short、int、long以及包装类</td>
+<td>大于或等于</td>
+<td>为null有效</td>
+</tr>
+<tr>
+<td>@Negative</td>
+<td>BigDecimal、BigInteger，byte、short、int、long、float、double以及包装类</td>
+<td>负数</td>
+<td>为null有效，0无效</td>
+</tr>
+<tr>
+<td>@NegativeOrZero</td>
+<td>BigDecimal、BigInteger，byte、short、int、long、float、double以及包装类</td>
+<td>负数或零</td>
+<td>为null有效</td>
+</tr>
+<tr>
+<td>@Positive</td>
+<td>BigDecimal、BigInteger，byte、short、int、long、float、double以及包装类</td>
+<td>正数</td>
+<td>为null有效，0无效</td>
+</tr>
+<tr>
+<td>@PositiveOrZero</td>
+<td>BigDecimal、BigInteger，byte、short、int、long、float、double以及包装类</td>
+<td>正数或零</td>
+<td>为null有效</td>
+</tr>
+<tr>
+<td>@Digits(integer = 3, fraction = 2)</td>
+<td>BigDecimal、BigInteger、CharSequence，byte、short、int、long以及包装类</td>
+<td>整数位数和小数位数上限</td>
+<td>为null有效</td>
+</tr>
+</tbody></table>
+<p><a name="ejs5f"></a></p>
+<h4 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h4><table>
+<thead>
+<tr>
+<th>注解</th>
+<th>支持Java类型</th>
+<th>说明</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>@Pattern</td>
+<td>CharSequence</td>
+<td>匹配指定的正则表达式</td>
+<td>为null有效</td>
+</tr>
+<tr>
+<td>@Email</td>
+<td>CharSequence</td>
+<td>邮箱地址</td>
+<td>为null有效，默认正则 <code>&#39;.*&#39;</code></td>
+</tr>
+<tr>
+<td>@Size</td>
+<td>CharSequence、Collection、Map、Array</td>
+<td>大小范围（length/size&gt;0）</td>
+<td>为null有效</td>
+</tr>
+</tbody></table>
+<p><a name="euFBF"></a></p>
+<h4 id="hibernate-validator扩展约束（部分）"><a href="#hibernate-validator扩展约束（部分）" class="headerlink" title="hibernate-validator扩展约束（部分）"></a>hibernate-validator扩展约束（部分）</h4><table>
+<thead>
+<tr>
+<th>注解</th>
+<th>支持Java类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>@Length</td>
+<td>String</td>
+<td>字符串长度范围</td>
+</tr>
+<tr>
+<td>@Range</td>
+<td>数值类型和String</td>
+<td>指定范围</td>
+</tr>
+<tr>
+<td>@URL</td>
+<td></td>
+<td>URL地址验证</td>
+</tr>
+</tbody></table>
+<p><a name="nB3k4"></a></p>
+<h3 id="自定义约束注解"><a href="#自定义约束注解" class="headerlink" title="自定义约束注解"></a>自定义约束注解</h3><p>除了以上提供的约束注解（大部分情况都是能够满足的），我们还可以根据自己的需求自定义自己的约束注解<br><strong>定义自定义约束，有三个步骤</strong></p>
+<ul>
+<li><strong>创建约束注解</strong></li>
+<li><strong>实现一个验证器</strong></li>
+<li><strong>定义默认的错误信息</strong></li>
+</ul>
+<p><strong>那么下面就直接来定义一个简单的验证手机号码的注解</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> 王振宇</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@Description</span> &lt;h1&gt;验证手机号码&lt;/h1&gt;</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@create</span> 2021-05-24 17:53</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="comment">//@Documented：用于标识自定义注解能够使用javadoc命令生成关于注解的文档</span></span><br><span class="line"><span class="meta">@Documented</span></span><br><span class="line"><span class="comment">/*@Target：用于明确注解用于目标类的哪个位置</span></span><br><span class="line"><span class="comment">        ElementType枚举类的值:</span></span><br><span class="line"><span class="comment">        Type:用于注解类</span></span><br><span class="line"><span class="comment">        Fields：用于注解属性</span></span><br><span class="line"><span class="comment">        Methods:用于注解方法</span></span><br><span class="line"><span class="comment">        Parameter:用于注解参数*/</span></span><br><span class="line"><span class="meta">@Target(&#123;METHOD, FIELD, ANNOTATION_TYPE, CONSTRUCTOR, PARAMETER, TYPE_USE&#125;)</span></span><br><span class="line"><span class="comment">/*@Constraint(validatedBy = &#123;MobileValidator.class&#125;)该注解是指明我们的自定义约束的验证器*/</span></span><br><span class="line"><span class="meta">@Constraint(validatedBy = &#123;MobileValidator.class&#125;)</span></span><br><span class="line"><span class="comment">/*@Retention：用于标识自定义注解的声明周期</span></span><br><span class="line"><span class="comment">        RetentionPolicy枚举类的值:</span></span><br><span class="line"><span class="comment">        SOURCE:没有被编译器编译</span></span><br><span class="line"><span class="comment">        CLASS：不会在运行时，被JVM保留</span></span><br><span class="line"><span class="comment">        RUNTIME:生命周期持续到运行时，能够通过反射获取到*/</span></span><br><span class="line"><span class="meta">@Retention(RUNTIME)</span></span><br><span class="line"><span class="comment">/*@Repeatable注解和List定义可以让该注解在同一个位置重复多次，通常是不同的配置（比如不同的分组和消息）*/</span></span><br><span class="line"><span class="meta">@Repeatable(Mobile.List.class)</span></span><br><span class="line"><span class="comment">/*自定义约束需要下面3个属性</span></span><br><span class="line"><span class="comment">    message 错误提示信息，可以写死,也可以填写国际化的key</span></span><br><span class="line"><span class="comment">    groups 分组信息，允许指定此约束所属的验证组（下面会说到分组约束）</span></span><br><span class="line"><span class="comment">    payload 有效负载，可以通过payload来标记一些需要特殊处理的操作*/</span></span><br><span class="line"><span class="keyword">public</span> <span class="meta">@interface</span> Mobile &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 错误提示信息，可以写死,也可以填写国际化的key</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">String <span class="title">message</span><span class="params">()</span> <span class="keyword">default</span> &quot;手机号码不正确&quot;</span>;  <span class="comment">//目前就演示写死了 </span></span><br><span class="line"></span><br><span class="line">    Class&lt;?&gt;[] groups() <span class="keyword">default</span> &#123;&#125;;</span><br><span class="line"></span><br><span class="line">    Class&lt;? extends Payload&gt;[] payload() <span class="keyword">default</span> &#123;&#125;;</span><br><span class="line"></span><br><span class="line">    <span class="function">String <span class="title">regexp</span><span class="params">()</span> <span class="keyword">default</span> &quot;^1<span class="params">([<span class="number">38</span>][<span class="number">0</span>-<span class="number">9</span>]|<span class="number">4</span>[<span class="number">579</span>]|<span class="number">5</span>[<span class="number">0</span>-<span class="number">3</span>,<span class="number">5</span>-<span class="number">9</span>]|<span class="number">6</span>[<span class="number">6</span>]|<span class="number">7</span>[0135678]|<span class="number">9</span>[<span class="number">89</span>])</span>\\d</span>&#123;<span class="number">8</span>&#125;$<span class="string">&quot;;</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">    @Target(&#123;METHOD, FIELD, ANNOTATION_TYPE, CONSTRUCTOR, PARAMETER, TYPE_USE&#125;)</span></span><br><span class="line"><span class="string">    @Retention(RUNTIME)</span></span><br><span class="line"><span class="string">    @Documented</span></span><br><span class="line"><span class="string">    @interface List &#123;</span></span><br><span class="line"><span class="string">        Mobile[] value();</span></span><br><span class="line"><span class="string">    &#125;</span></span><br><span class="line"><span class="string">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>关于注解的配置这里不说了，自定义约束需要下面3个属性</p>
+<ul>
+<li><code>message</code> 错误提示信息，可以写死,也可以填写国际化的key</li>
+<li><code>groups</code> 分组信息，允许指定此约束所属的验证组（下面会说到分组约束）</li>
+<li><code>payload</code> 有效负载，可以通过payload来标记一些需要特殊处理的操作</li>
+</ul>
+<p><code>@Repeatable</code>注解和<code>List</code>定义可以让该注解在同一个位置重复多次，通常是不同的配置（比如不同的分组和消息）<br><code>@Constraint(validatedBy = &#123;MobileValidator.class&#125;)</code>该注解是指明我们的自定义约束的验证器<br><strong>实现一个验证器MovileValidator</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> 王振宇</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@Description</span> &lt;h1&gt;Mobile自定义约束的验证器&lt;/h1&gt;</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@create</span> 2021-05-24 18:02</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="comment">//ConstraintValidator接口定义了在实现中设置的两个类型参数。第一个指定要验证的注解类（如Mobile），第二个指定验证器可以处理的元素类型（如String）；</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MobileValidator</span>  <span class="keyword">implements</span> <span class="title">ConstraintValidator</span>&lt;<span class="title">Mobile</span>,<span class="title">String</span>&gt; </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 手机验证规则</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> Pattern pattern;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * initialize()方法可以访问约束注解的属性值；</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> constraintAnnotation</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">initialize</span><span class="params">(Mobile constraintAnnotation)</span> </span>&#123;</span><br><span class="line">        pattern = Pattern.compile(constraintAnnotation.regexp());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * isValid()方法用于验证，返回true表示验证通过</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> value</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> context</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">isValid</span><span class="params">(String value, ConstraintValidatorContext context)</span> </span>&#123;</span><br><span class="line">        <span class="comment">//Bean验证规范建议将空值视为有效。如果null不是元素的有效值，则应使用@NotNull 显式注释</span></span><br><span class="line">        <span class="keyword">if</span> (value == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> pattern.matcher(value).matches();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>在需要的地方通过@Mobile就可以检验</strong><br><strong>(更细节的自定义约束注解我会做一次有质量的总结,后续我会发布)</strong></p>
+<blockquote>
+<p><strong>关于文章我只是建议大家参考,因为有很多细节以及很多坑我还没有替大家踩完,可能也有我理解错误的地方,希望大家给出一份宝贵的建议,共同进步才是双赢!!!!</strong></p>
+</blockquote>
+<blockquote>
+<p><strong>这就是Hibernate Validator一个小小总结,结合了很多优秀的文章内容,站在巨人的肩膀上去进行技术的提升,关于SpringBoot的整合,以及检验后的信息回溯,怎样更优美的进行验证异常处理,我会在写一篇关于springboot在实际项目中的实践</strong>.</p>
+</blockquote>
+ 
+      <!-- reward -->
+      
+      <div id="reword-out">
+        <div id="reward-btn">
+          打赏
+        </div>
+      </div>
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>版权声明： </strong>
+          
+          本博客所有文章除特别声明外，著作权归作者所有。转载请注明出处！
+          
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=http://example.com/2021/05/25/Hibernate-Validator%E5%8F%82%E6%95%B0%E6%A0%A1%E9%AA%8C/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Hibernate-Validator/" rel="tag">Hibernate Validator</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JAVA/" rel="tag">JAVA</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/springBoot/" rel="tag">springBoot</a></li></ul>
+
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2021/05/25/SpringBoot%E5%85%A8%E5%B1%80%E5%BC%82%E5%B8%B8/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            SpringBoot全局异常
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2021/05/22/SpringBoot%E9%9B%86%E6%88%90%E9%98%BF%E9%87%8C%E4%BA%91SMS%E7%9F%AD%E4%BF%A1%E6%9C%8D%E5%8A%A1/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">SpringBoot集成阿里云SMS短信服务</div>
+      </a>
+    
+  </nav>
+
+   
+<!-- valine评论 -->
+<div id="vcomments-box">
+  <div id="vcomments"></div>
+</div>
+<script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/valine@1.4.14/dist/Valine.min.js"></script>
+<script>
+  new Valine({
+    el: "#vcomments",
+    app_id: "FK44LjKAyAxnztwTTUtjxaRV-gzGzoHsz",
+    app_key: "C0OoL7n17zI2kyURsJdE0APu",
+    path: window.location.pathname,
+    avatar: "monsterid",
+    placeholder: "给我的文章加点评论吧~",
+    recordIP: true,
+	enableQQ: true,
+	boolean: true,
+  });
+  const infoEle = document.querySelector("#vcomments .info");
+  if (infoEle && infoEle.childNodes && infoEle.childNodes.length > 0) {
+    infoEle.childNodes.forEach(function (item) {
+      item.parentNode.removeChild(item);
+    });
+  }
+</script>
+<style>
+  #vcomments-box {
+    padding: 5px 30px;
+  }
+
+  @media screen and (max-width: 800px) {
+    #vcomments-box {
+      padding: 5px 0px;
+    }
+  }
+
+  #vcomments-box #vcomments {
+    background-color: #fff;
+  }
+
+  .v .vlist .vcard .vh {
+    padding-right: 20px;
+  }
+
+  .v .vlist .vcard {
+    padding-left: 10px;
+  }
+</style>
+
+ 
+   
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2021
+        <i class="ri-heart-fill heart_icon"></i> Mr.Wang
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>访问人数:<span id="busuanzi_value_site_uv"></span></span>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>浏览次数:<span id="busuanzi_value_page_pv"></span></span>
+</span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+			生活一团糟
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="BLUSH"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/2019/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search"  title="搜索">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+      <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+        <i class="ri-rss-line"></i>
+      </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    
+<script src="/js/jquery-2.0.3.min.js"></script>
+ 
+<script src="/js/lazyload.min.js"></script>
+
+<!-- Tocbot -->
+ 
+<script src="/js/tocbot.min.js"></script>
+
+<script>
+  tocbot.init({
+    tocSelector: ".tocbot",
+    contentSelector: ".article-entry",
+    headingSelector: "h1, h2, h3, h4, h5, h6",
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: "main",
+    positionFixedSelector: ".tocbot",
+    positionFixedClass: "is-position-fixed",
+    fixedSidebarOffset: "auto",
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+
+<script src="/dist/main.js"></script>
+
+<!-- ImageViewer -->
+ <!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script> 
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+ 
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+ 
+<!-- ClickLove -->
+ 
+<script src="/js/clickLove.js"></script>
+ 
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+ 
+<link rel="stylesheet" href="/css/clipboard.css">
+ <script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+ 
+<!-- CanvasBackground -->
+ 
+<script src="/js/dz.js"></script>
+ 
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({ theme: "forest" });
+  }
+</script>
+
+
+    
+    <div id="music">
+    
+    
+    
+    <iframe frameborder="no" border="1" marginwidth="0" marginheight="0" width="200" height="52"
+        src="//music.163.com/outchain/player?type=2&id=1468957767&auto=1&height=32"></iframe>
+</div>
+
+<style>
+    #music {
+        position: fixed;
+        right: 15px;
+        bottom: 0;
+        z-index: 998;
+    }
+</style>
+    
+  </div>
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginModelPath":"assets/","model":{"jsonPath":"/live2dw/assets/hijiki.model.json"},"display":{"position":"left","width":150,"height":300,"hOffset":80,"vOffset":-70},"mobile":{"show":false,"scale":0.5},"log":false,"pluginJsPath":"lib/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+
+</html>
